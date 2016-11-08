@@ -1,28 +1,96 @@
-<!DOCTYPE html>
+<!DOCTYPE HTML>
 <html>
 <head>
-	<title>OpenUI5 Todo App</title>
 
 	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-	<meta charset="UTF-8">
 
-	<script id="sap-ui-bootstrap" type="text/javascript"
-		src="resources/sap-ui-core.js"
-		data-sap-ui-theme="sap_bluecrystal"
-		data-sap-ui-libs="sap.m"
-		data-sap-ui-bindingSyntax="complex"
-		data-sap-ui-compatVersion="edge"
-		data-sap-ui-preload="async"
-		data-sap-ui-resourceroots='{"todo": "./"}'>
-	</script>
-	<script>
-		sap.ui.getCore().attachInit(function() {
-			new sap.ui.core.ComponentContainer({
-				name: "todo"
-			}).placeAt("root");
-		});
-	</script>
+	<script id="sap-ui-bootstrap"
+			type="text/javascript"
+			data-sap-ui-libs="sap.m"
+			data-sap-ui-theme="sap_bluecrystal" src="https://sapui5.hana.ondemand.com/resources/sap-ui-core.js"></script>
 
 </head>
-<body class="sapUiBody" id="root" role="application"></body>
-</html>
+<body class="sapUiBody">
+	<div id="content"></div>
+</body>
+
+<script>
+	jQuery(function() {
+		function login() {
+			sap.m.MessageToast.show(JSON.stringify(vbox.getModel().getData()));
+		}
+
+		var oName = new sap.m.Input({value: '{/name}'});
+		var oPassword = new sap.m.Input({
+			value: '{/password}',
+			'type': sap.m.InputType.Password,
+		});
+
+		oName.onAfterRendering = function() {
+			if (sap.m.Input.prototype.onAfterRendering) {
+				sap.m.Input.prototype.onAfterRendering.apply(this);
+			}
+			this.$().bind('keypress', function(e) {
+				var code = e.keyCode || e.which;
+				if (code === 13) {
+					if (oName.getValue().trim() !== '') {
+						oPassword.$().find('INPUT').focus();
+					} else {
+						sap.m.MessageToast.show('Please enter user name.');
+					}
+				}
+			});
+		}
+
+		oPassword.onAfterRendering = function() {
+			if (sap.m.Input.prototype.onAfterRendering) {
+				sap.m.Input.prototype.onAfterRendering.apply(this);
+			}
+			this.$().bind('keypress', function(e) {
+				var code = e.keyCode || e.which;
+				if (code === 13) {
+					if (oPassword.getValue().trim() !== '') {
+						if (oName.getValue() && oName.getValue().trim() !== '') {
+							login();
+						} else {
+							oName.$().find('INPUT').focus();
+						}
+					} else {
+						sap.m.MessageToast.show('Please enter password.');
+					}
+				}
+			});
+		}
+
+
+
+		var oBtn = new sap.m.Button({
+			'text' : 'Login',
+			enabled: {
+				parts: ['/name', '/password'],
+				formatter: function(name, pwd) {
+					return (name.trim() !== '') && (pwd.trim() !== '')
+				}
+			},
+			press: function() {
+				login();
+			}
+		});
+
+		var model = new sap.ui.model.json.JSONModel();
+		model.setData({
+			name: '',
+			password: ''
+		});
+
+
+		var vbox = new sap.m.VBox({
+			items: [
+				oName, oPassword, oBtn
+			]
+		});
+		vbox.setModel(model);
+		vbox.placeAt('content');
+
+	});
+</script>
