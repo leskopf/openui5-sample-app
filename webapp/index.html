@@ -1,96 +1,588 @@
-<!DOCTYPE HTML>
+<!DOCTYPE html>
 <html>
 <head>
-
 	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Master-Detail</title>
 
+	<!-- Bootstrapping UI5 -->
 	<script id="sap-ui-bootstrap"
-			type="text/javascript"
+			src="https://sapui5.hana.ondemand.com/resources/sap-ui-core.js"
 			data-sap-ui-libs="sap.m"
-			data-sap-ui-theme="sap_bluecrystal" src="https://sapui5.hana.ondemand.com/resources/sap-ui-core.js"></script>
+			data-sap-ui-theme="sap_bluecrystal"
+			data-sap-ui-compatVersion="edge"
+			data-sap-ui-resourceroots='{"sap.ui.demo.masterdetail": "./"}'
+			data-sap-ui-frameOptions='allow'> 	// NON-SECURE setting for testing environment
+	</script>
+	<script id="app-view" type="sapui5/xmlview">
+		<mvc:View
+		xmlns:layout="sap.ui.commons.layout"
+		xmlns:mvc="sap.ui.core.mvc"
+		xmlns="sap.m"
+		xmlns:core="sap.ui.core"
+		displayBlock="true">
+			<SplitApp id="splitApp">
+			</SplitApp>
+	   </mvc:View>
+	</script>
 
-</head>
-<body class="sapUiBody">
-	<div id="content"></div>
-</body>
+	<script>
+		/**
+		 *  Master-Detail Demo App based on SAPUI5/OpenUI5
+		 *
+		 * This app is an example of the Master-Detail view pattern
+		 * It is based on SAPUI5/OpenUI5.
+		 *
+		 * I'm not sure if everything that belongs to a "proper" OpenUI5 (or Fiori-Style?) App can be found here,
+		 * so I welcome any kind of input that can make this demo a little bit better.
+		 *
+		 * Because we're evaluating SAPUI5/OpenUI5 in our company, I think the best thing one
+		 * can do is to sit down and write an App just by using the minimal amount of "coder's toys".
+		 * So, no extra libraries, no cool Editors/IDE's.
+		 *
+		 * Nothing but JavaScript, the libs & docs from SAP,...and JSFiddle. :)
+		 *
+		 * We know SAPUI5 only for a week but the library seems very stable and mature. No wonder, it's from SAP and it exists for some
+		 * years.
+		 *
+		 * I hope this little demo will be of some use to the community.
+		 *
+		 * There's also a more complex version that can run under Visual Studio (IIS) or NodeJS: https://github.com/brakmic/OpenUI5_Table_Demo
+		 *
+		 * Regards,
+		 * Harris Brakmic
+		 *
+		 * advarics GmbH, Innsbruck (Austria)
+		 * Branch Office - Bochum (Germany)
+		 * http://www.advarics.net
+		 *
+		 * Created: 22. Dec. 2014
+		 * License: OpenSource (MIT), what else? ;)
+		 */
 
-<script>
-	jQuery(function() {
-		function login() {
-			sap.m.MessageToast.show(JSON.stringify(vbox.getModel().getData()));
-		}
+		/**********************************************************************
+		 * Changelog:
+		 *
+		 * 24. Dec. 2014: Added XML-views. Please, go to line 506 for more info.
+		 *
+		 **********************************************************************/
 
-		var oName = new sap.m.Input({value: '{/name}'});
-		var oPassword = new sap.m.Input({
-			value: '{/password}',
-			'type': sap.m.InputType.Password,
-		});
-
-		oName.onAfterRendering = function() {
-			if (sap.m.Input.prototype.onAfterRendering) {
-				sap.m.Input.prototype.onAfterRendering.apply(this);
-			}
-			this.$().bind('keypress', function(e) {
-				var code = e.keyCode || e.which;
-				if (code === 13) {
-					if (oName.getValue().trim() !== '') {
-						oPassword.$().find('INPUT').focus();
-					} else {
-						sap.m.MessageToast.show('Please enter user name.');
-					}
+		/**
+		 * @name App-Settings
+		 *
+		 * All globals should go here
+		 */
+		jQuery.sap.declare('advarics.global.Settings');
+		advarics.global.Settings = {
+			//toggle extra logging info
+			WITH_LOGGING: true
+		};
+		/**
+		 * @name Logger
+		 */
+		jQuery.sap.declare('advarics.util.Logger');
+		advarics.util.Logger = {
+			write: function (msg) {
+				var date = new Date();
+				if (window.console && advarics.global.Settings.WITH_LOGGING) {
+					console.log('[' + date.toLocaleTimeString('en-EN') + '], ' + msg);
 				}
-			});
-		}
-
-		oPassword.onAfterRendering = function() {
-			if (sap.m.Input.prototype.onAfterRendering) {
-				sap.m.Input.prototype.onAfterRendering.apply(this);
 			}
-			this.$().bind('keypress', function(e) {
-				var code = e.keyCode || e.which;
-				if (code === 13) {
-					if (oPassword.getValue().trim() !== '') {
-						if (oName.getValue() && oName.getValue().trim() !== '') {
-							login();
-						} else {
-							oName.$().find('INPUT').focus();
-						}
-					} else {
-						sap.m.MessageToast.show('Please enter password.');
-					}
-				}
-			});
-		}
-
-
-
-		var oBtn = new sap.m.Button({
-			'text' : 'Login',
-			enabled: {
-				parts: ['/name', '/password'],
-				formatter: function(name, pwd) {
-					return (name.trim() !== '') && (pwd.trim() !== '')
+		};
+		/**
+		 * @name Formatter
+		 * further examples: http://help.sap.com/saphelp_uiaddon10/helpdata/en/48/2df92c6e8b429c8fc9022179515194/content.htm
+		 */
+		jQuery.sap.declare('advarics.util.Formatter');
+		advarics.util.Formatter = {
+			toCurrency: function (value) {
+				advarics.util.Logger.write('Formatter.toCurrency, ' + JSON.stringify(value));
+				if (value) {
+					return parseFloat(value).toFixed(2);
 				}
 			},
-			press: function() {
-				login();
+			toShortDate: function (sDate) {
+				if (sDate) {
+					var oDateFormat = sap.ui.core.format.DateFormat.getDateTimeInstance({
+						pattern: "dd-MM-yyyy"
+					});
+					return oDateFormat.format(new Date(sDate));
+				}
+				return sDate;
+			}
+		};
+
+		/**
+		 * @name AppView
+		 * This view has no controller, because it gets automatically created by the advarics.components.apps.App
+		 * instance during "boot". Its sole purpose is to remove the Browser Scrollbar (DisplayBlock = true)
+		 * and to inject the SplitApp instance with ID "splitApp" so the other components will have a proper target control.
+		 * If you check the config/routing parts of the advarics.components.apps.App declaration you'll recognize 'splitApp'
+		 * as the predefined targetControl.
+		 */
+		sap.ui.jsview('advarics.views.App', {
+
+			createContent: function (oController) {
+				//avoid scrollbars on desktop
+				this.setDisplayBlock(true);
+				//create the SplitApp (Master-Detail)
+				this.app = new sap.m.SplitApp("splitApp", {});
+				return this.app;
 			}
 		});
 
-		var model = new sap.ui.model.json.JSONModel();
-		model.setData({
-			name: '',
-			password: ''
+		/**
+		 * @name MasterView
+		 * This view is responsible to show the list of products received from the Northwind OData Service.
+		 * Check your browser settings because of the 'same origin' security policy.
+		 */
+		sap.ui.jsview('advarics.views.Master', {
+			getControllerName: function () {
+				advarics.util.Logger.write('MasterView.getControllerName()');
+				return 'advarics.controllers.Master';
+			},
+			createContent: function (oController) {
+				advarics.util.Logger.write('MasterView.createContent()');
+				//Beware: there are many different click events: List-based, ListItem-based & SelectionChange.
+				//A very good explanation can be found here:
+				//http://stackoverflow.com/questions/26431153/parameter-passing-from-one-xmlviewlist-to-another-xmlviewlist-on-sapui5?answertab=votes#tab-top
+				var oProductList = new sap.m.List('Products', {
+					inset: false,
+					mode: sap.m.ListMode.SingleSelectMaster,
+					growing: true,
+					itemPress: [oController.onItemPress, oController],
+					selectionChange: [oController.onSelectionChange, oController]
+
+				});
+				//initialize SearchBar
+				var searchBar = new sap.m.Bar('searchBar', {
+					contentMiddle: [
+						new sap.m.SearchField('search', {
+							id: 'searchField',
+							tooltip: 'Do some search...',
+							placeholder: 'Search',
+							showRefreshButton: true,
+							refreshButtonTooltip: 'Refresh',
+							showNavButton: true,
+							search: [oController.onSearch, oController]
+						})]
+				});
+				//define a template for ListItems
+				var prodTempl = new sap.m.ObjectListItem({
+					title: '{Name}',
+					type: sap.m.ListType.Active,
+					number: {
+						path: 'Price',
+						formatter: advarics.util.Formatter.toCurrency
+					},
+					press: [oController.onListItemPress, oController],
+					numberUnit: 'EUR',
+					iconInset: false
+				});
+				//bind to the Products from Odata-based Model and use the template for every processed item
+				oProductList.bindAggregation('items', '/Products', prodTempl);
+				//create the master page and put the SearchBar & ProductList into it
+				var masterPage = new sap.m.Page("masterPage", {
+					title: "Products",
+					showNavButton: false,
+					content: [
+						searchBar,
+						oProductList]
+				});
+				return masterPage;
+			}
 		});
 
+		/*
+		 * @name DetailView
+		 * This view displays additional data of the selected item
+		 */
+		sap.ui.jsview('advarics.views.Detail', {
+			getControllerName: function () {
+				advarics.util.Logger.write('DetailView.getControllerName()');
+				return 'advarics.controllers.Detail';
+			},
+			createContent: function () {
+				advarics.util.Logger.write('DetailView.createContent()');
+				//one page full of product data
+				//more info here: https://sapui5.hana.ondemand.com/sdk/#docs/guide/08887a263aa94c14838593aecddf1529.html
+				return new sap.m.Page({
+					id: 'detailPage',
+					title: 'Product Details',
+					headerContent: [],
+					content: [
+						new sap.m.ObjectHeader('ProductInfo', {
+							title: '{Name}',
+							attributes: [
+								new sap.m.ObjectAttribute('Price', {
+									text: 'Price: {Price}'
+								}),
+								new sap.m.ObjectAttribute('Description', {
+									text: 'Description: {Description}'
+								}),
+								new sap.m.ObjectAttribute('Rating', {
+									text: 'Rating: {Rating}'
+								}),
+								new sap.m.ObjectAttribute('ReleaseDate', {
+									text: {
+										path: 'ReleaseDate',
+										formatter: advarics.util.Formatter.toShortDate
+									}
+								})]
 
-		var vbox = new sap.m.VBox({
-			items: [
-				oName, oPassword, oBtn
-			]
+						}),
+						//a little bit of advertisement, for fun & profit...but mostly profit ;)
+						new sap.m.Bar({
+							enableFlexBox: true,
+							contentRight: new sap.m.Link("Company", {
+								text: 'advarics GmbH',
+								href: 'http://www.advarics.net',
+								target: '_blank'
+							})
+						})]
+				});
+			}
 		});
-		vbox.setModel(model);
-		vbox.placeAt('content');
 
-	});
-</script>
+		/**
+		 * @name MasterController
+		 * This is the main controller for processing user interactions
+		 */
+		jQuery.sap.declare('advarics.controllers.Master');
+		sap.ui.core.mvc.Controller.extend('advarics.controllers.Master', {
+			//each time a new MasterView is created a corresponding controller will be initialized via
+			//onInit function
+			onInit: function () {
+				advarics.util.Logger.write('MasterController.onInit()');
+				//wire up the router and pattern matcher
+				//more info: http://help.sap.com/saphelp_nw74/helpdata/de/68/8f36bd758e4ce2b4e682eef4dc794e/content.htm?frameset=/de/a4/25399ec2fe47a8b9ba9653ab4f6623/frameset.htm&current_toc=/de/5c/be4e5b4a19479a92b1d32ff23b7b63/plain.htm&node_id=94&fullscreen=true
+				this._router = sap.ui.core.UIComponent.getRouterFor(this);
+				this._router.attachRoutePatternMatched(this.onRouteMatched, this);
+				this._view = this.getView();
+				this._view.setModel(sap.ui.getCore().getModel('northwind'));
+			},
+			onRouteMatched: function (oEvent) {
+				advarics.util.Logger.write('MasterController.onRouteMatched()');
+				var sName = oEvent.getParameter('name');
+				//check if it's 'our' route
+				if (sName !== 'Main') {
+					return;
+				}
+
+				//load detail view
+				this.getRouter().navToWithoutHash({
+					currentView: this._view,
+					targetViewName: 'advarics.views.Detail',
+					targetViewType: 'JS'
+				});
+			},
+			onSelectionChange: function (oEvent) {
+				var path = oEvent.getParameter('listItem').getBindingContext().getPath().substr(1);
+				advarics.util.Logger.write('MasterController.onSelectionChange > ' + path);
+				//let router navigate to the detail page
+				//more info: https://sapui5.netweaver.ondemand.com/sdk/docs/api/symbols/sap.ui.core.routing.Router.html#navTo
+				this._router.navTo("product", {
+					from: "master",
+					product: path,
+					tab: "detail"
+				}, true);
+			},
+			//not used
+			onItemPress: function (oEvent) {
+				var path = oEvent.getParameter('listItem').getBindingContext().getPath().substr(1);
+				advarics.util.Logger.write('MasterController.onItemPress > ' + path);
+			},
+			//not used
+			onListItemPress: function (oEvent) {
+				var path = oEvent.getParameter('listItem').getBindingContext().getPath().substr(1);
+				advarics.util.Logger.write('MasterController.onListItemPress > ' + path);
+			},
+			//currently useless ;)
+			onSearch: function (oEvent) {
+				var query = oEvent.getParameter('query');
+				if (query) {
+					advarics.util.Logger.write('Searching for ' + query);
+				}
+			}
+		});
+
+		/**
+		 * @name DetailController
+		 * This controller receives product data from the Router. This is the >indirection point<, because MasterController does not hand
+		 * over product information directly to DetailController. DetailController only gets the "ProductPath" info (e.g. Product(2))
+		 * from the Router and based on it executes an HTTP-request against the same 'northwind' OData-Service.
+		 * Afterwards, the OData-response gets bound with the DetailView.
+		 */
+		jQuery.sap.declare('advarics.controllers.Detail');
+		sap.ui.core.mvc.Controller.extend('advarics.controllers.Detail', {
+			onInit: function () {
+				advarics.util.Logger.write('DetailController.onInit()');
+				//get router and wire up to the pattern matcher
+				this._router = sap.ui.core.UIComponent.getRouterFor(this);
+				this._router.attachRoutePatternMatched(this.onRouteMatched, this);
+				//get detail view so we can bind received data with it
+				this._view = this.getView();
+				this._model = sap.ui.getCore().getModel('northwind');
+				this._view.setModel(this._model);
+			},
+			onRouteMatched: function (oEvent) {
+				//check if it was 'our' route event
+				if (oEvent.getParameter("name") === "product") {
+					//build a proper product path for OData HTTP-request
+					var sProductPath = '/' + oEvent.getParameter('arguments').product;
+					//bind DetailView with received OData
+					//a proper View should never get its data directly from model but always through some intermediary, like
+					//this Controller, for example.
+					this._view.bindElement(sProductPath);
+					//excecute the HTTP request against the Northwind-Service
+					var productInfo = this._model.getData(sProductPath);
+					advarics.util.Logger.write('DetailController.onRouteMatched > ' + JSON.stringify(productInfo));
+				} else {
+					advarics.util.Logger.write('DetailController.onRouteMatched > wrong route!');
+				}
+			}
+		});
+
+		/**
+		 * @name AppRouter
+		 * This component reacts to changes in the browser url and is resposible for navigation between views
+		 * This router component extends from basic SAPUI5 router. Therefore we have to require two components
+		 * from the SAPUI5 library: the Router and RouterMatchedHandler
+		 *
+		 * Notice: most of the available functionality of this router is not needed for this example but it can
+		 * serve as a blue print for some "real" scenarios with #-changes, deep links, back-button-browsing etc.
+		 */
+		jQuery.sap.declare('advarics.components.routers.AppRouter');
+		jQuery.sap.require("sap.ui.core.routing.Router");
+		jQuery.sap.require("sap.m.routing.RouteMatchedHandler");
+		sap.ui.core.routing.Router.extend('advarics.components.routers.AppRouter', {
+			//@constructor
+			//initialize the parent router/prototype
+			constructor: function () {
+				advarics.util.Logger.write('AppRouter.constructor');
+				sap.ui.core.routing.Router.apply(this, arguments);
+			},
+			navigateBack: function (sRoute, mData) {
+				advarics.util.Logger.write('AppRouter.navigateBack');
+				var oHistory = sap.ui.core.routing.History.getInstance();
+				var sPrevHash = oHistory.getPreviousHash();
+				//history contains a previous entry?
+				if (sPrevHash !== undefined) {
+					window.history.go(-1);
+				} else {
+					//to prevent to go back with forward history
+					var bReplace = true;
+					this.navTo(sRoute, mData, bReplace);
+				}
+			},
+
+			navToWithoutHash: function (oOptions) {
+				advarics.util.Logger.write('AppRouter.navToWithoutHash');
+				var oSplitApp = this._findSplitApp(oOptions.currentView);
+				//load view, add it to the page aggregation and navigate to it
+				var oView = this.getView(oOptions.targetViewName, oOptions.targetViewType);
+				oSplitApp.addPage(oView, oOptions.isMaster);
+				oSplitApp.to(oView.getId(), oOptions.transition || 'show', oOptions.data);
+			},
+
+			backWithoutHash: function (oCurrentView, bIsMaster) {
+				advarics.util.Logger.write('AppRouter.backWithoutHash');
+				var sBackMethod = bIsMaster ? 'backMaster' : 'backDetail';
+				this._findSplitApp(oCurrentView)[sBackMethod]();
+			},
+			onRouteMatched: function (oEvent) {
+				advarics.util.Logger.write('AppRouter.onRouteMatched');
+				advarics.util.Logger.write(JSON.stringify(oEvent));
+			},
+			destroy: function () {
+				advarics.util.Logger.write('AppRouter.destroy');
+				sap.ui.core.routing.Router.prototype.destroy.apply(this, arguments);
+				if (this._oRouteMatchedHandler) {
+					this._oRouteMatchedHandler.destroy();
+				}
+			},
+			_findSplitApp: function (oControl) {
+				advarics.util.Logger.write('AppRouter._findSplitApp');
+				var sAncestorControlName = 'splitApp';
+				if (oControl instanceof sap.ui.core.mvc.View && oControl.byId(sAncestorControlName)) {
+					return oControl.byId(sAncestorControlName);
+				}
+				return oControl.getParent() ? this._findSplitApp(oControl.getParent(), sAncestorControlName) : null;
+			}
+		});
+
+		/**
+		 * @name AppComponent
+		 * This is the main component that is responsible for setting up the app-wide defaults and resources.
+		 * It creates the OData Model, initializes the first view and defines all available routes.
+		 */
+		jQuery.sap.declare('advarics.components.apps.App');
+		jQuery.sap.require('advarics.components.routers.AppRouter');
+		sap.ui.core.UIComponent.extend('advarics.components.apps.App', {
+			metadata: {
+				name: 'Master-Detail Demo WebApp',
+				version: '0.0.1',
+				includes: [],
+				dependencies: {
+					libs: ['sap.m', 'sap.ui.layout'],
+					components: []
+				},
+				config: {
+					viewType: 'JS',
+					viewPath: 'advarics.views',
+					targetControl: 'splitApp',
+					clearTarget: false,
+					serviceConfig: {
+						name: 'Northwind',
+						//disable cross-origin policy in chrome to get data from the service below
+						serviceUrl: 'http://services.odata.org/V2/(S(sapuidemotdg))/OData/OData.svc/'
+					}
+				},
+				//here we define the whole routing and reference the AppRouter
+				//Notice: the views of this App are JS-views but you can also use XML-Views embedded in a script tag like in the HTML-section above.
+				//You can use the XML "app-view" example as a reference.
+				//
+				//more info about the config-section here: http://help.sap.com/saphelp_hanaplatform/helpdata/en/68/8f36bd758e4ce2b4e682eef4dc794e/content.htm?frameset=/en/f6/998380aeb94af6917eff27aa5cc14c/frameset.htm&current_toc=/en/d0/1cd0b7be7f441cb6c56ad4577b428c/plain.htm&node_id=93
+				routing: {
+					config: {
+						routerClass: advarics.components.routers.AppRouter,
+						viewType: 'JS',
+						viewPath: 'advarics.views',
+						targetAggregation: 'detailPages',
+						clearTarget: false,
+						transition: 'slide'
+					},
+					//the array of routes
+					routes: [{
+						pattern: '',
+						name: 'main',
+						view: 'Master',
+						viewType: 'JS',
+						targetAggregation: 'masterPages',
+						targetControl: 'splitApp',
+						callback: function () {
+							advarics.util.Logger.write('AppView > MasterView');
+						},
+						//our detail page is a subroute
+						subroutes: [{
+							pattern: '{product}/:tab:',
+							name: 'product',
+							view: 'Detail',
+							viewType: 'JS',
+							callback: function () {
+								advarics.util.Logger.write('MasterView > ProductView');
+							}
+						}]
+					},
+						//there is also a catchall-route for routes that can't be matched by the current Router logic
+						//in this example there are no "not found"-pages because we don't switch pages via browser-url
+						{
+							name: 'catchAllMaster',
+							view: 'Master',
+							viewType: 'HTML',
+							targetAggregation: 'masterPages',
+							targetControl: 'splitApp',
+							callback: function () {
+								advarics.util.Logger.write('AppView > CatchAllMasterRoute');
+							},
+							subroutes: [{
+								pattern: ':all*:',
+								name: 'catchAllDetail',
+								view: 'NotFound',
+								viewType: 'JS',
+								callback: function () {
+									advarics.util.Logger.write('CatchAllMasterRoute > CatchAllDetailRoute');
+								}
+							}]
+						}]
+				}
+			},
+			//this is the entry point for the whole application that gets called by the SAPUI5 runtime
+			init: function () {
+				advarics.util.Logger.write('App.init()');
+				//properly initialize the parent/prototype component
+				sap.ui.core.UIComponent.prototype.init.apply(this, arguments);
+				//get metadata from the above config-part
+				var mConfig = this.getMetadata().getConfig();
+				var sServiceUrl = mConfig.serviceConfig.serviceUrl;
+				//initialize the OData-based Model from Northwind-Service
+				var oModel = new sap.ui.model.odata.ODataModel(sServiceUrl);
+				//make the model "globally" available and give it a name for better referencing
+				sap.ui.getCore().setModel(oModel, 'northwind');
+
+				//get default router
+				this._router = this.getRouter();
+				//extend the router
+				jQuery.extend(this._router, advarics.components.routers.AppRouter);
+				//router OK?
+				advarics.util.Logger.write(this._router ? 'AppRouter OK' : 'AppRouter NOT OK');
+				//activate routing
+				this._router.initialize();
+			},
+			//properly remove resources while closing the App
+			destroy: function () {
+				advarics.utils.Logger.write('App.destroy()');
+				if (this.oRouteHandler) {
+					this.oRouteHandler.destroy();
+				}
+				// call overwritten destroy
+				sap.ui.core.UIComponent.prototype.destroy.apply(this, arguments);
+			},
+			//the App creates the first View
+			createContent: function () {
+				advarics.util.Logger.write('App.createContent()');
+
+				//View Referencing: JavaScript type
+				//*********************************
+				//When using a JS-view we directly reference it by its name
+				//defined at the beginning of this script
+				/*var oView = sap.ui.view({
+				 id: 'app',
+				 viewName: 'advarics.views.App',
+				 type: 'JS',
+				 viewData: {
+				 component: this
+				 }
+				 });
+				 return oView;*/
+
+				//View Referencing: XML type
+				//****************************
+				//Please, note the different referencing property.
+				//While for a JS-view we're allowed to use "viewName" to reference it the XML-version needs a "viewContent".
+				//This is due to the fact that we're not referencing some separate file with XML-data in it but
+				//an embedded XML-content. In such cases we're pointing to a "script" with a type "sapui5/xmlview".
+				//Because a JS-view belongs to a certain "declared" JS-namespace it can therefore be directly referenced by its
+				//name. Not so with external views, like embedded XML's. Of course, this doesn't mean we always have to do it that way
+				//but this is just because JSFiddle doesn't offer us a possibility to create separate files. Therefore we
+				//have to resort to such "tricks" where we embed XML-views inside of script-blocks and declare them
+				//to be "non-JavaScript"-scripts. In a real SAPUI5/OpenUI5 application we'd usually have many smaller
+				//view-files (XMLs, HTMLs or JS) which can be directly referenced by their respective names.
+				return sap.ui.xmlview("app", {
+					viewContent: jQuery('#app-view').html()
+				});
+
+			}
+		});
+
+		/**
+		 * Shell with a Component container
+		 * The above App can't get rendered on a page without a proper ComponentContainer.
+		 * More info: http://help.sap.com/saphelp_nw74/helpdata/de/18/2ab413eb54433eb16f1ecf15a00651/content.htm
+		 */
+		var appCom = new advarics.components.apps.App();
+		var oShell = new sap.m.Shell('Shell', {
+			title: 'A new shell',
+			app: new sap.ui.core.ComponentContainer({
+				component: appCom
+			})
+		}).placeAt('content');
+	</script>
+
+</head>
+
+<!-- UI Content -->
+<body class="sapUiBody" id="content">
+</body>
+</html>
